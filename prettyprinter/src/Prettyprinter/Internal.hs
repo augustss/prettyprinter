@@ -1,11 +1,14 @@
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE CPP                 #-}
-{-# LANGUAGE DefaultSignatures   #-}
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE GADTs               #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
+{-# LANGUAGE DefaultSignatures     #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeOperators         #-}
 
 {-# OPTIONS_HADDOCK not-home #-}
 
@@ -23,7 +26,7 @@ module Prettyprinter.Internal (
     Doc(..),
 
     -- * Basic functionality
-    Pretty(..),
+    Pretty(..), PrettyAnn(..),
     viaShow, unsafeViaShow, unsafeTextWithoutNewlines,
     emptyDoc, nest, line, line', softline, softline', hardline,
 
@@ -347,6 +350,45 @@ instance Pretty Char where
     prettyList = vsep . map unsafeTextWithoutNewlines . T.splitOn "\n"
 #endif
 
+-- | This class is similar to 'Pretty', but allows you to embed annotations in
+-- the 'Doc'.
+--
+-- @since FIXME
+class PrettyAnn ann a where
+
+    prettyAnn :: a -> Doc ann
+
+    default prettyAnn :: Show a => a -> Doc ann
+    prettyAnn = viaShow
+
+    prettyAnnList :: [a] -> Doc ann
+    prettyAnnList = align . list . map prettyAnn
+
+instance PrettyAnn ann (Doc ann) where
+    prettyAnn = id
+
+instance PrettyAnn ann a => PrettyAnn ann (Const a b) where
+    prettyAnn = prettyAnn . getConst
+
+#if FUNCTOR_IDENTITY_IN_BASE
+instance PrettyAnn ann a => PrettyAnn ann (Identity a) where
+    prettyAnn = prettyAnn . runIdentity
+#endif
+
+instance PrettyAnn ann a => PrettyAnn ann [a] where
+    prettyAnn = prettyAnnList
+
+instance PrettyAnn ann a => PrettyAnn ann (NonEmpty a) where
+    prettyAnn (x:|xs) = prettyAnnList (x:xs)
+
+instance PrettyAnn ann () where prettyAnn = pretty
+
+instance PrettyAnn ann Bool where prettyAnn = pretty
+
+instance PrettyAnn ann Char where
+    prettyAnn = pretty
+    prettyAnnList = prettyList
+
 -- | Convenience function to convert a 'Show'able value to a 'Doc'. If the
 -- 'String' does not contain newlines, consider using the more performant
 -- 'unsafeViaShow'.
@@ -451,10 +493,12 @@ instance Pretty a => Pretty (Maybe a) where
 -- hello world
 --
 -- Manually use @'hardline'@ if you /definitely/ want newlines.
-instance Pretty Text where pretty = vsep . map unsafeTextWithoutNewlines . T.splitOn "\n"
+instance Pretty Text where
+    pretty = vsep . map unsafeTextWithoutNewlines . T.splitOn "\n"
 
 -- | (lazy 'Text' instance, identical to the strict version)
-instance Pretty Lazy.Text where pretty = pretty . Lazy.toStrict
+instance Pretty Lazy.Text
+    where pretty = pretty . Lazy.toStrict
 #endif
 
 -- | Finding a good example for printing something that does not exist is hard,
@@ -463,6 +507,45 @@ instance Pretty Lazy.Text where pretty = pretty . Lazy.toStrict
 -- >>> pretty ([] :: [Void])
 -- []
 instance Pretty Void where pretty = absurd
+
+instance PrettyAnn ann Int    where prettyAnn = pretty
+instance PrettyAnn ann Int8   where prettyAnn = pretty
+instance PrettyAnn ann Int16  where prettyAnn = pretty
+instance PrettyAnn ann Int32  where prettyAnn = pretty
+instance PrettyAnn ann Int64  where prettyAnn = pretty
+instance PrettyAnn ann Word   where prettyAnn = pretty
+instance PrettyAnn ann Word8  where prettyAnn = pretty
+instance PrettyAnn ann Word16 where prettyAnn = pretty
+instance PrettyAnn ann Word32 where prettyAnn = pretty
+instance PrettyAnn ann Word64 where prettyAnn = pretty
+
+instance PrettyAnn ann Integer where prettyAnn = pretty
+
+#if NATURAL_IN_BASE
+instance PrettyAnn ann Natural where prettyAnn = pretty
+#endif
+
+instance PrettyAnn ann Float where prettyAnn = pretty
+
+instance PrettyAnn ann Double where prettyAnn = pretty
+
+instance (PrettyAnn ann a1, PrettyAnn ann a2) => PrettyAnn ann (a1,a2) where
+    prettyAnn (x1,x2) = tupled [prettyAnn x1, prettyAnn x2]
+
+instance (PrettyAnn ann a1, PrettyAnn ann a2, PrettyAnn ann a3) => PrettyAnn ann (a1,a2,a3) where
+    prettyAnn (x1,x2,x3) = tupled [prettyAnn x1, prettyAnn x2, prettyAnn x3]
+
+instance PrettyAnn ann a => PrettyAnn ann (Maybe a) where
+    prettyAnn = maybe mempty prettyAnn
+    prettyAnnList = prettyAnnList . catMaybes
+
+#ifdef MIN_VERSION_text
+instance PrettyAnn ann Text where prettyAnn = pretty
+
+instance PrettyAnn ann Lazy.Text where prettyAnn = pretty
+#endif
+
+instance PrettyAnn ann Void where prettyAnn = absurd
 
 
 
