@@ -15,12 +15,13 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: augustss/MicroHs
-        ref: v0.14.27.0
+        ref: v0.15.4.0
         path: mhs
     - name: make and install mhs
       run: |
         cd mhs
         make minstall
+        echo "$HOME/.mcabal/bin" >> "$GITHUB_PATH"
 
     # prettyprinter
     - name: checkout prettyprinter repo
@@ -30,31 +31,26 @@ jobs:
 
     - name: compile and install prettyprinter package
       run: |
-        PATH="$HOME/.mcabal/bin:$PATH"
         cd prettyprinter/prettyprinter
         mcabal -r install
 
     - name: compile and install prettyprinter-ansi-terminal package
       run: |
-        PATH="$HOME/.mcabal/bin:$PATH"
         cd prettyprinter/prettyprinter-ansi-terminal
         mcabal -r install
 
     - name: compile and install prettyprinter-compat-annotated-wl-pprint package
       run: |
-        PATH="$HOME/.mcabal/bin:$PATH"
         cd prettyprinter/prettyprinter-compat-annotated-wl-pprint
         mcabal -r install
 
     - name: compile and install prettyprinter-compat-ansi-wl-pprint package
       run: |
-        PATH="$HOME/.mcabal/bin:$PATH"
         cd prettyprinter/prettyprinter-compat-ansi-wl-pprint
         mcabal -r install
 
     - name: compile and install prettyprinter-compat-wl-pprint package
       run: |
-        PATH="$HOME/.mcabal/bin:$PATH"
         cd prettyprinter/prettyprinter-compat-wl-pprint
         mcabal -r install
 
