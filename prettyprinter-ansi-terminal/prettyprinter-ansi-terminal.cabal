@@ -20,6 +20,15 @@ source-repository head
   type: git
   location: https://github.com/quchen/prettyprinter
 
+flag text
+  description: While it's a core value of @prettyprinter@ packages to use @Text@, there are rare
+               circumstances (mostly when @prettyprinter@ arises as a dependency of
+               test suites of packages like @bytestring@ or @text@ themselves) when
+               this is inconvenient. In this case one can disable this flag, so that
+               @prettyprinter-ansi-terminal@ fallbacks to @String@.
+  default:     True
+  manual:      True
+
 library
     exposed-modules:  Data.Text.Prettyprint.Doc.Render.Terminal
                     , Data.Text.Prettyprint.Doc.Render.Terminal.Internal
@@ -35,10 +44,19 @@ library
 
 
     build-depends:
-          base          >= 4.5 && < 5
+          base          >= 4.9 && < 5
         , ansi-terminal >= 0.4.0
-        , text          >= 1.2
         , prettyprinter >= 1.7.0
+    if flag(text)
+        build-depends: text >= 1.2
+    else
+        -- A fake text package, emulating the same API, but backed by String
+        hs-source-dirs: src-text
+        other-modules:
+              Data.Text
+            , Data.Text.IO
+            , Data.Text.Lazy
+            , Data.Text.Lazy.Builder
 
     if impl(ghc >= 8.0)
         ghc-options: -Wcompat
@@ -50,7 +68,7 @@ test-suite doctest
     hs-source-dirs: test/Doctest
     main-is: Main.hs
     build-depends:
-          base    >= 4.7 && < 5
+          base    >= 4.9 && < 5
         , doctest >= 0.9
     ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
     default-language: Haskell2010
@@ -60,8 +78,8 @@ test-suite doctest
 
 benchmark large-output
     build-depends:
-          base >= 4.5 && < 5
-        , base-compat >=0.9.3 && <0.12
+          base >= 4.9 && < 5
+        , base-compat >=0.9.3 && <0.15
         , containers
         , deepseq
         , tasty-bench >= 0.2
